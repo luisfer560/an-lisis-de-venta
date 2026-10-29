@@ -394,8 +394,7 @@
             { id: "tx-108", producto: "Paquete Snacks Gourmet", categoria: "Alimentos", monto: 28.00, fecha: "2026-03-19", cliente: "David Ruiz" }
         ];
 
-        //Estado global con persistencia en localStorege
-
+        // Estado Global con persitencia en localStorage
         let transacciones = cargarTransacciones();
 
         // ==========================================
@@ -405,14 +404,13 @@
         /**
          * Obtiene las transacciones guardadas en localStorage o retorna los datos de ejemplo
          */
-
-        function cargartransacciones(){
+        function cargarTransacciones() {
             const guardado = localStorage.getItem('js_nivel2_ventas');
             if (guardado) {
                 try {
                     return JSON.parse(guardado);
-                } catch(e) {
-                    console.error("error al parsear LocalStorage",e);
+                } catch (e) {
+                    console.error("Error al parsear LocalStorage:", e);
                     return [...DATOS_EJEMPLO];
                 }
             }
@@ -423,7 +421,7 @@
          * Guarda el array actual de transacciones en localStorage
          */
         const guardarEnLocalStorage = () => {
-            localStorage.setItem('js_nivel12_ventas', JSON.stringify(transacciones));
+            localStorage.setItem('js_nivel2_ventas', JSON.stringify(transacciones));
         };
 
         // ==========================================
@@ -434,6 +432,96 @@
          * Calcula las métricas generales utilizando exclusivamente métodos avanzadas de Array
          * @param {Array} lista - Lista de transacciones filtradas o totales
          * @returns {Object} Objeto con los indicadores clave
+         */
+        const calcularMetricas = (lista) => {
+            if (lista.length === 0) {
+                return { total: 0, promedio: 0, productoTop: "N/A", productoTopCount: 0, catTop: "N/A", catTopMonto: 0 };
+            }
+
+            // A) TOTAL INGRESOS: Uso de reduce() para sumar los montos
+            const total = lista.reduce((acumulador, tx) => acumulador + parseFloat(tx.monto), 0);
+
+            // B) PROMEDIO DE VENTA: División entre total y la longitud del array
+            const promedio = total / lista.length;
+
+            // C) PRODUCTO MÁS VENDIDO (Frecuencia): Uso de reduce() con un objeto acumulador
+            const conteoProductos = lista.reduce((acc, tx) => {
+                acc[tx.producto] = (acc[tx.producto] || 0) + 1;
+                return acc;
+            }, {});
+
+            // Determinar cuál clave (producto) tiene la mayor frecuencia mediante Object.entries()
+            let productoTop = "N/A";
+            let productoTopCount = 0;
+            
+            Object.entries(conteoProductos).forEach(([prod, count]) => {
+                if (count > productoTopCount) {
+                    productoTopCount = count;
+                    productoTop = prod;
+                }
+            });
+
+            // D) CATEGORÍA LÍDER EN INGRESOS: Uso de reduce() agregando montos por categoría
+            const ingresosPorCategoria = lista.reduce((acc, tx) => {
+                acc[tx.categoria] = (acc[tx.categoria] || 0) + parseFloat(tx.monto);
+                return acc;
+            }, {});
+
+            let catTop = "N/A";
+            let catTopMonto = 0;
+
+            Object.entries(ingresosPorCategoria).forEach(([cat, monto]) => {
+                if (monto > catTopMonto) {
+                    catTopMonto = monto;
+                    catTop = cat;
+                }
+            });
+
+            return { total, promedio, productoTop, productoTopCount, catTop, catTopMonto, ingresosPorCategoria };
+        };
+
+        /**
+         * Filtra y ordena la lista de transacciones según la configuración del usuario
+         */
+        const obtenerTransaccionesFiltradas = () => {
+            const busqueda = document.getElementById('filtro-busqueda').value.toLowerCase().trim();
+            const categoria = document.getElementById('filtro-categoria').value;
+            const orden = document.getElementById('filtro-orden').value;
+
+            //1. Filtrado combinado (filter)
+
+            let resultado = transacciones.filter(tx => {
+                const coincideTexto = tx.producto.ToLowerCase().includes(busqueda) || tx.cliente.tolowercase().includes(busqueda);
+
+                const coincideCat = (categoria === 'TODAS') || (tx.categoria === categoria);
+                return coincideTexto && coincideCat;
+            });
+
+            //2. Ordenamiento (sort)
+            resultado.sort((a, b) => {
+                if (orden === 'reciente') return new Date(b.fecha) - new Date(a.fecha);
+                if (orden === 'antiguo') return new Date(a.fecha) - new Date(b.fecha);
+                if (orden === 'monto-desc') return b.monto - a.monto;
+                if (orden === 'monto-asc') return a.monto - b.monto;
+                return 0;
+            });
+
+            return resultado;
+        };
+
+         // ==========================================
+        // 4. MANIPULACIÓN Y RENDERIZADO DEL DOM
+        // ==========================================
+
+        /**
+         * Formatea números a moneda USD
+         */
+        const formatearMoneda = (valor) => {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(valor);
+        };
+
+        /**
+         * Renderiza las Tarjetas KPI principales
          */
 
     </script>
